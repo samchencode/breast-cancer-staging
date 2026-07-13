@@ -89,12 +89,14 @@ export default function App() {
               value={input.nodes}
               description={getNodeDefinition(input.basis, input.nodes)}
               onPress={() => setOpenPicker('nodes')}
+              fill
             />
             <SelectorField
               label="Metastasis"
               value={input.metastasis}
               description={tnmDefinitions.metastasis[input.metastasis]}
               onPress={() => setOpenPicker('metastasis')}
+              fill
             />
           </View>
 
@@ -162,11 +164,12 @@ type SelectorFieldProps = {
   value: string;
   description: string;
   onPress: () => void;
+  fill?: boolean;
 };
 
-function SelectorField({ label, value, description, onPress }: SelectorFieldProps) {
+function SelectorField({ label, value, description, onPress, fill }: SelectorFieldProps) {
   return (
-    <View style={styles.selectorGroup}>
+    <View style={[styles.selectorGroup, fill && styles.selectorGroupFill]}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <Pressable accessibilityRole="button" onPress={onPress} style={styles.selectorField}>
         <View style={styles.selectorValueRow}>
@@ -374,7 +377,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   optionGroup: {
-    flex: 1,
     gap: 8,
   },
   fieldLabel: {
@@ -418,8 +420,11 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   selectorGroup: {
-    flex: 1,
     gap: 8,
+  },
+  selectorGroupFill: {
+    flex: 1,
+    minWidth: 0,
   },
   selectorField: {
     backgroundColor: '#ffffff',

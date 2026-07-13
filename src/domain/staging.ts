@@ -68,6 +68,18 @@ type BiomarkerKey = `${BiomarkerStatus}|${BiomarkerStatus}|${BiomarkerStatus}`;
 type PrognosticBucket = 'A' | 'B' | 'C' | 'D' | 'E';
 type PrognosticMatrix = Record<Grade, Record<BiomarkerKey, StageGroup>>;
 
+// Prognostic buckets are internal row groups for the AJCC prognostic tables, not
+// user-facing stage names. M1 and Tis/N0 are handled before these buckets.
+//
+// A: T0/T1 with N0 or N1mi.
+// B: T0/T1 with N1, or T2 with N0.
+// C: T2 with N1/N1mi, or T3 with N0.
+// D: T0-T3 with N2, or T3 with N1/N1mi.
+// E: T4 with any N, or any T with N3.
+//
+// Each matrix row is grade-specific. Values are ordered by BIOMARKER_KEYS:
+// HER2+/ER+/PR+, HER2+/ER+/PR-, HER2+/ER-/PR+, HER2+/ER-/PR-,
+// HER2-/ER+/PR+, HER2-/ER+/PR-, HER2-/ER-/PR+, HER2-/ER-/PR-.
 const BIOMARKER_KEYS: BiomarkerKey[] = [
   'positive|positive|positive',
   'positive|positive|negative',
