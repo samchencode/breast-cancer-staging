@@ -31,6 +31,8 @@ The current domain model includes:
 
 Oncotype DX is implemented only as a prognostic-stage modifier for eligible pathologic HR+/HER2- T1-T2 N0 M0 cases. Low-risk scores `0` through `10` (`<11`) modify the pathologic prognostic stage to `IA`. The score does not modify anatomic stage and does not modify clinical prognostic stage.
 
+Non-metastatic `T0` with `N0`-equivalent nodes is reported as `Not applicable`. Stage 0 is reserved for `Tis N0 M0`, and the AJCC/NCI stage-group tables do not assign `T0 N0 M0` to stage 0 or stage IA.
+
 ## Getting Started
 
 Use Node.js `22.13.x` or newer compatible with Expo SDK 57. Before changing Expo or React Native behavior, read the versioned Expo docs:

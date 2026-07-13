@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { getNodeDefinition, nodeOptionsByBasis, tnmDefinitions } from './src/domain/definitions';
 import {
@@ -21,6 +21,17 @@ const gradeOptions: Grade[] = ['G1', 'G2', 'G3'];
 const biomarkerOptions: BiomarkerStatus[] = ['positive', 'negative'];
 type PickerKey = 'tumor' | 'nodes' | 'metastasis';
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean;
+};
+
+const pwaInstallPromptDismissedKey = 'breastCancerStagingPwaInstallPromptDismissed';
+
 const initialInput: StagingInput = {
   basis: 'clinical',
   tumor: 'T1c',
@@ -36,8 +47,45 @@ const initialInput: StagingInput = {
 export default function App() {
   const [input, setInput] = useState<StagingInput>(initialInput);
   const [openPicker, setOpenPicker] = useState<PickerKey | null>(null);
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
   const result = useMemo(() => calculateBreastCancerStage(input), [input]);
   const nodeOptions = nodeOptionsByBasis[input.basis];
+  const isWeb = Platform.OS === 'web';
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      return;
+    }
+
+    setIsPwaInstalled(isRunningAsInstalledPwa());
+
+    function handleBeforeInstallPrompt(event: Event) {
+      event.preventDefault();
+      const promptEvent = event as BeforeInstallPromptEvent;
+
+      setInstallPromptEvent(promptEvent);
+
+      if (!hasDismissedPwaInstallPrompt()) {
+        setShowInstallPrompt(true);
+      }
+    }
+
+    function handleAppInstalled() {
+      setInstallPromptEvent(null);
+      setShowInstallPrompt(false);
+      setIsPwaInstalled(true);
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   function update<K extends keyof StagingInput>(key: K, value: StagingInput[K]) {
     setInput((current) => ({ ...current, [key]: value }));
@@ -66,13 +114,54 @@ export default function App() {
     }
   }
 
+  async function promptPwaInstall() {
+    if (Platform.OS !== 'web' || !installPromptEvent) {
+      return;
+    }
+
+    setShowInstallPrompt(false);
+    await installPromptEvent.prompt();
+
+    try {
+      const choice = await installPromptEvent.userChoice;
+
+      if (choice.outcome === 'accepted') {
+        setIsPwaInstalled(true);
+      }
+    } finally {
+      setInstallPromptEvent(null);
+    }
+  }
+
+  function dismissPwaInstallPrompt() {
+    if (Platform.OS === 'web') {
+      rememberPwaInstallPromptDismissed();
+    }
+
+    setShowInstallPrompt(false);
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.screen}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Breast cancer staging</Text>
-          <Text style={styles.title}>Stage calculator</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.eyebrow}>Breast cancer staging</Text>
+            <Text style={styles.title}>Stage calculator</Text>
+          </View>
+          {isWeb ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={!installPromptEvent || isPwaInstalled}
+              onPress={promptPwaInstall}
+              style={[styles.installButton, (!installPromptEvent || isPwaInstalled) && styles.installButtonDisabled]}
+            >
+              <Text style={[styles.installButtonText, (!installPromptEvent || isPwaInstalled) && styles.installButtonTextDisabled]}>
+                {isPwaInstalled ? 'Installed' : 'INSTALL'}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.resultPanel}>
@@ -174,7 +263,76 @@ export default function App() {
           setOpenPicker(null);
         }}
       />
+      {isWeb ? (
+        <InstallPromptModal
+          visible={showInstallPrompt && installPromptEvent != null && !isPwaInstalled}
+          onDismiss={dismissPwaInstallPrompt}
+          onInstall={promptPwaInstall}
+        />
+      ) : null}
     </SafeAreaView>
+  );
+}
+
+function hasDismissedPwaInstallPrompt() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return true;
+  }
+
+  try {
+    return window.localStorage.getItem(pwaInstallPromptDismissedKey) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function rememberPwaInstallPromptDismissed() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(pwaInstallPromptDismissedKey, 'true');
+  } catch {
+    // Storage can be unavailable in private or restricted browser contexts.
+  }
+}
+
+function isRunningAsInstalledPwa() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return false;
+  }
+
+  const standaloneDisplayMode = typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches;
+  const iosStandalone = Boolean((window.navigator as NavigatorWithStandalone).standalone);
+
+  return standaloneDisplayMode || iosStandalone;
+}
+
+type InstallPromptModalProps = {
+  visible: boolean;
+  onDismiss: () => void;
+  onInstall: () => void;
+};
+
+function InstallPromptModal({ visible, onDismiss, onInstall }: InstallPromptModalProps) {
+  return (
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onDismiss}>
+      <View style={styles.installPromptBackdrop}>
+        <View style={styles.installPromptCard}>
+          <Text style={styles.installPromptTitle}>Install Web App</Text>
+          <Text style={styles.installPromptText}>Add this calculator to your device for a standalone app window.</Text>
+          <View style={styles.installPromptActions}>
+            <Pressable accessibilityRole="button" onPress={onDismiss} style={styles.installPromptSecondaryButton}>
+              <Text style={styles.installPromptSecondaryText}>Not now</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={onInstall} style={styles.installPromptPrimaryButton}>
+              <Text style={styles.installPromptPrimaryText}>Install</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -367,8 +525,16 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   header: {
-    gap: 4,
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
     paddingTop: 8,
+  },
+  headerText: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
   },
   eyebrow: {
     color: '#6f5d51',
@@ -380,6 +546,27 @@ const styles = StyleSheet.create({
     color: '#241c18',
     fontSize: 34,
     fontWeight: '800',
+  },
+  installButton: {
+    alignItems: 'center',
+    backgroundColor: '#784c61',
+    borderRadius: 8,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  installButtonDisabled: {
+    backgroundColor: '#e8dfd7',
+  },
+  installButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  installButtonTextDisabled: {
+    color: '#8a7c73',
   },
   resultPanel: {
     backgroundColor: '#ffffff',
@@ -566,6 +753,67 @@ const styles = StyleSheet.create({
     color: '#4b3b20',
     fontSize: 14,
     lineHeight: 20,
+  },
+  installPromptBackdrop: {
+    backgroundColor: 'rgba(36, 28, 24, 0.36)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  installPromptCard: {
+    alignSelf: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#ded4cb',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    maxWidth: 420,
+    padding: 18,
+    width: '100%',
+  },
+  installPromptTitle: {
+    color: '#241c18',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  installPromptText: {
+    color: '#4e433d',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  installPromptActions: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
+  },
+  installPromptSecondaryButton: {
+    alignItems: 'center',
+    borderColor: '#cbbdb3',
+    borderRadius: 6,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 14,
+  },
+  installPromptSecondaryText: {
+    color: '#4e433d',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  installPromptPrimaryButton: {
+    alignItems: 'center',
+    backgroundColor: '#784c61',
+    borderRadius: 6,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 16,
+  },
+  installPromptPrimaryText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   modalBackdrop: {
     backgroundColor: 'rgba(36, 28, 24, 0.36)',

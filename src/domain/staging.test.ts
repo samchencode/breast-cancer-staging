@@ -51,6 +51,39 @@ test('golden staging fixture', async (t) => {
   }
 });
 
+test('T0 with N0 and M0 is not assigned a stage group', () => {
+  const inputs: StagingInput[] = [
+    {
+      basis: 'clinical',
+      tumor: 'T0',
+      nodes: 'N0',
+      metastasis: 'M0',
+      grade: 'G3',
+      er: 'negative',
+      pr: 'negative',
+      her2: 'negative',
+    },
+    {
+      basis: 'pathologic',
+      tumor: 'T0',
+      nodes: 'N0(i+)',
+      metastasis: 'M0(i+)',
+      grade: 'G3',
+      er: 'negative',
+      pr: 'negative',
+      her2: 'negative',
+    },
+  ];
+
+  for (const input of inputs) {
+    const actual = calculateBreastCancerStage(input);
+
+    assert.equal(actual.anatomicStage, 'Not applicable');
+    assert.equal(actual.prognosticStage, 'Not applicable');
+    assert.ok(actual.notes.some((note) => note.includes('stage 0 is reserved for Tis N0 M0')));
+  }
+});
+
 test('low-risk Oncotype DX score modifies eligible pathologic prognostic stage to IA', () => {
   const actual = calculateBreastCancerStage({
     basis: 'pathologic',

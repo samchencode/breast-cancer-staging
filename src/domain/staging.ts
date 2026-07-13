@@ -74,7 +74,7 @@ const LOW_RISK_ONCOTYPE_MAX_EXCLUSIVE = 11;
 // Prognostic buckets are internal row groups for the AJCC prognostic tables, not
 // user-facing stage names. M1 and Tis/N0 are handled before these buckets.
 //
-// A: T0/T1 with N0 or N1mi.
+// A: T1 with N0/N1mi, or T0 with N1mi.
 // B: T0/T1 with N1, or T2 with N0.
 // C: T2 with N1/N1mi, or T3 with N0.
 // D: T0-T3 with N2, or T3 with N1/N1mi.
@@ -182,6 +182,10 @@ export function calculateAnatomicStage(input: Pick<StagingInput, 'tumor' | 'node
     return 'Not applicable';
   }
 
+  if (tumorGroup === 'T0' && nodeGroup === 'N0') {
+    return 'Not applicable';
+  }
+
   if (nodeGroup === 'N3') {
     return 'IIIC';
   }
@@ -239,6 +243,10 @@ export function calculatePrognosticStage(input: StagingInput): StageGroup {
 
   if (tumorGroup === 'Tis' && nodeGroup === 'N0') {
     return '0';
+  }
+
+  if (tumorGroup === 'T0' && nodeGroup === 'N0') {
+    return 'Not applicable';
   }
 
   const bucket = getPrognosticBucket(tumorGroup, nodeGroup);
@@ -409,6 +417,10 @@ function buildNotes(input: StagingInput, anatomicStage: StageGroup, prognosticSt
 
   if (input.tumor === 'Tis' && normalizeNodeCategory(input.nodes) !== 'N0') {
     notes.push('Tis with nodal involvement has no anatomic stage group in this calculator; prognostic staging uses the nodal tumor information grouped with T0.');
+  }
+
+  if (input.tumor === 'T0' && normalizeNodeCategory(input.nodes) === 'N0' && normalizeMetastasisCategory(input.metastasis) === 'M0') {
+    notes.push('T0 with N0/M0 has no assigned stage group in this calculator; stage 0 is reserved for Tis N0 M0.');
   }
 
   if (anatomicStage !== prognosticStage) {
