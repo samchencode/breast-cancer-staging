@@ -1,0 +1,370 @@
+export type StagingBasis = 'clinical' | 'pathologic';
+export type TumorCategory =
+  | 'Tis'
+  | 'T0'
+  | 'T1a'
+  | 'T1b'
+  | 'T1c'
+  | 'T2'
+  | 'T3'
+  | 'T4a'
+  | 'T4b'
+  | 'T4c'
+  | 'T4d';
+export type TumorGroup = 'Tis' | 'T0' | 'T1' | 'T2' | 'T3' | 'T4';
+export type NodeGroup = 'N0' | 'N1mi' | 'N1' | 'N2' | 'N3';
+export type ClinicalNodeCategory = 'N0' | 'N1mi' | 'N1' | 'N2a' | 'N2b' | 'N3a' | 'N3b' | 'N3c';
+export type PathologicNodeCategory =
+  | 'N0'
+  | 'N0(i+)'
+  | 'N0(mol+)'
+  | 'N1mi'
+  | 'N1a'
+  | 'N1b'
+  | 'N1c'
+  | 'N2a'
+  | 'N2b'
+  | 'N3a'
+  | 'N3b'
+  | 'N3c';
+export type NodeCategory = ClinicalNodeCategory | PathologicNodeCategory;
+export type MetastasisCategory = 'M0' | 'M1';
+export type Grade = 'G1' | 'G2' | 'G3';
+export type BiomarkerStatus = 'positive' | 'negative';
+
+export type StageGroup =
+  | '0'
+  | 'IA'
+  | 'IB'
+  | 'IIA'
+  | 'IIB'
+  | 'IIIA'
+  | 'IIIB'
+  | 'IIIC'
+  | 'IV';
+
+export type StagingInput = {
+  basis: StagingBasis;
+  tumor: TumorCategory;
+  nodes: NodeCategory;
+  metastasis: MetastasisCategory;
+  grade: Grade;
+  er: BiomarkerStatus;
+  pr: BiomarkerStatus;
+  her2: BiomarkerStatus;
+};
+
+export type StagingResult = {
+  prefix: 'c' | 'p';
+  tnm: string;
+  anatomicStage: StageGroup;
+  prognosticStage: StageGroup;
+  subtype: string;
+  notes: string[];
+};
+
+type BiomarkerKey = `${BiomarkerStatus}|${BiomarkerStatus}|${BiomarkerStatus}`;
+type PrognosticBucket = 'A' | 'B' | 'C' | 'D' | 'E';
+type PrognosticMatrix = Record<Grade, Record<BiomarkerKey, StageGroup>>;
+
+const BIOMARKER_KEYS: BiomarkerKey[] = [
+  'positive|positive|positive',
+  'positive|positive|negative',
+  'positive|negative|positive',
+  'positive|negative|negative',
+  'negative|positive|positive',
+  'negative|positive|negative',
+  'negative|negative|positive',
+  'negative|negative|negative',
+];
+
+const CLINICAL_PROGNOSTIC_STAGE: Record<PrognosticBucket, PrognosticMatrix> = {
+  A: makeMatrix({
+    G1: ['IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IB'],
+    G2: ['IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IB'],
+    G3: ['IA', 'IA', 'IA', 'IA', 'IA', 'IB', 'IB', 'IB'],
+  }),
+  B: makeMatrix({
+    G1: ['IB', 'IIA', 'IIA', 'IIA', 'IB', 'IIA', 'IIA', 'IIA'],
+    G2: ['IB', 'IIA', 'IIA', 'IIA', 'IB', 'IIA', 'IIA', 'IIB'],
+    G3: ['IB', 'IIA', 'IIA', 'IIA', 'IIA', 'IIB', 'IIB', 'IIB'],
+  }),
+  C: makeMatrix({
+    G1: ['IB', 'IIA', 'IIA', 'IIB', 'IIA', 'IIB', 'IIB', 'IIB'],
+    G2: ['IB', 'IIA', 'IIA', 'IIB', 'IIA', 'IIB', 'IIB', 'IIIB'],
+    G3: ['IB', 'IIB', 'IIB', 'IIB', 'IIB', 'IIIA', 'IIIA', 'IIIB'],
+  }),
+  D: makeMatrix({
+    G1: ['IIA', 'IIIA', 'IIIA', 'IIIA', 'IIA', 'IIIA', 'IIIA', 'IIIB'],
+    G2: ['IIA', 'IIIA', 'IIIA', 'IIIA', 'IIA', 'IIIA', 'IIIA', 'IIIB'],
+    G3: ['IIB', 'IIIA', 'IIIA', 'IIIA', 'IIIA', 'IIIB', 'IIIB', 'IIIC'],
+  }),
+  E: makeMatrix({
+    G1: ['IIIA', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIC'],
+    G2: ['IIIA', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIC'],
+    G3: ['IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIC', 'IIIC', 'IIIC'],
+  }),
+};
+
+const PATHOLOGIC_PROGNOSTIC_STAGE: Record<PrognosticBucket, PrognosticMatrix> = {
+  A: makeMatrix({
+    G1: ['IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IA'],
+    G2: ['IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IB'],
+    G3: ['IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IA', 'IB'],
+  }),
+  B: makeMatrix({
+    G1: ['IA', 'IB', 'IB', 'IIA', 'IA', 'IB', 'IB', 'IIA'],
+    G2: ['IA', 'IB', 'IB', 'IIA', 'IA', 'IIA', 'IIA', 'IIA'],
+    G3: ['IA', 'IIA', 'IIA', 'IIA', 'IB', 'IIA', 'IIA', 'IIA'],
+  }),
+  C: makeMatrix({
+    G1: ['IA', 'IIB', 'IIB', 'IIB', 'IA', 'IIB', 'IIB', 'IIB'],
+    G2: ['IB', 'IIB', 'IIB', 'IIB', 'IB', 'IIB', 'IIB', 'IIB'],
+    G3: ['IB', 'IIB', 'IIB', 'IIB', 'IIA', 'IIB', 'IIB', 'IIIA'],
+  }),
+  D: makeMatrix({
+    G1: ['IB', 'IIIA', 'IIIA', 'IIIA', 'IB', 'IIIA', 'IIIA', 'IIIA'],
+    G2: ['IB', 'IIIA', 'IIIA', 'IIIA', 'IB', 'IIIA', 'IIIA', 'IIIB'],
+    G3: ['IIA', 'IIIA', 'IIIA', 'IIIA', 'IIB', 'IIIA', 'IIIA', 'IIIC'],
+  }),
+  E: makeMatrix({
+    G1: ['IIIA', 'IIIB', 'IIIB', 'IIIB', 'IIIA', 'IIIB', 'IIIB', 'IIIB'],
+    G2: ['IIIA', 'IIIB', 'IIIB', 'IIIB', 'IIIA', 'IIIB', 'IIIB', 'IIIC'],
+    G3: ['IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIB', 'IIIC', 'IIIC', 'IIIC'],
+  }),
+};
+
+export function calculateBreastCancerStage(input: StagingInput): StagingResult {
+  const prefix = input.basis === 'clinical' ? 'c' : 'p';
+  const anatomicStage = calculateAnatomicStage(input);
+  const prognosticStage = calculatePrognosticStage(input);
+  const notes = buildNotes(input, anatomicStage, prognosticStage);
+
+  return {
+    prefix,
+    tnm: `${prefix}${input.tumor} ${prefix}${input.nodes} ${input.metastasis}`,
+    anatomicStage,
+    prognosticStage,
+    subtype: getBiomarkerSubtype(input),
+    notes,
+  };
+}
+
+export function calculateAnatomicStage(input: Pick<StagingInput, 'tumor' | 'nodes' | 'metastasis'>): StageGroup {
+  if (input.metastasis === 'M1') {
+    return 'IV';
+  }
+
+  const tumorGroup = normalizeTumorForStage(input.tumor, input.nodes);
+  const nodeGroup = normalizeNodeCategory(input.nodes);
+
+  if (tumorGroup === 'Tis' && nodeGroup === 'N0') {
+    return '0';
+  }
+
+  if (nodeGroup === 'N3') {
+    return 'IIIC';
+  }
+
+  if (tumorGroup === 'T4') {
+    return 'IIIB';
+  }
+
+  if (nodeGroup === 'N2') {
+    return 'IIIA';
+  }
+
+  if (nodeGroup === 'N1mi') {
+    if (tumorGroup === 'T0' || tumorGroup === 'T1') {
+      return 'IB';
+    }
+
+    if (tumorGroup === 'T2') {
+      return 'IIB';
+    }
+
+    return 'IIIA';
+  }
+
+  if (nodeGroup === 'N1') {
+    if (tumorGroup === 'T0' || tumorGroup === 'T1') {
+      return 'IIA';
+    }
+
+    if (tumorGroup === 'T2') {
+      return 'IIB';
+    }
+
+    return 'IIIA';
+  }
+
+  if (tumorGroup === 'Tis') {
+    return '0';
+  }
+
+  if (tumorGroup === 'T0' || tumorGroup === 'T1') {
+    return 'IA';
+  }
+
+  if (tumorGroup === 'T2') {
+    return 'IIA';
+  }
+
+  return 'IIB';
+}
+
+export function calculatePrognosticStage(input: StagingInput): StageGroup {
+  if (input.metastasis === 'M1') {
+    return 'IV';
+  }
+
+  const tumorGroup = normalizeTumorForStage(input.tumor, input.nodes);
+  const nodeGroup = normalizeNodeCategory(input.nodes);
+
+  if (tumorGroup === 'Tis' && nodeGroup === 'N0') {
+    return '0';
+  }
+
+  const bucket = getPrognosticBucket(tumorGroup, nodeGroup);
+  const matrix = input.basis === 'clinical' ? CLINICAL_PROGNOSTIC_STAGE : PATHOLOGIC_PROGNOSTIC_STAGE;
+
+  return matrix[bucket][input.grade][getBiomarkerKey(input)];
+}
+
+export function getBiomarkerSubtype(input: Pick<StagingInput, 'er' | 'pr' | 'her2'>): string {
+  const hormoneReceptorPositive = input.er === 'positive' || input.pr === 'positive';
+
+  if (hormoneReceptorPositive && input.her2 === 'positive') {
+    return 'HR+/HER2+';
+  }
+
+  if (hormoneReceptorPositive) {
+    return 'HR+/HER2-';
+  }
+
+  if (input.her2 === 'positive') {
+    return 'HER2-enriched pattern';
+  }
+
+  return 'Triple negative';
+}
+
+export function normalizeTumorCategory(tumor: TumorCategory): TumorGroup {
+  if (tumor === 'T1a' || tumor === 'T1b' || tumor === 'T1c') {
+    return 'T1';
+  }
+
+  if (tumor === 'T4a' || tumor === 'T4b' || tumor === 'T4c' || tumor === 'T4d') {
+    return 'T4';
+  }
+
+  return tumor;
+}
+
+export function normalizeNodeCategory(nodes: NodeCategory): NodeGroup {
+  if (nodes === 'N1mi') {
+    return 'N1mi';
+  }
+
+  if (nodes.startsWith('N3')) {
+    return 'N3';
+  }
+
+  if (nodes.startsWith('N2')) {
+    return 'N2';
+  }
+
+  if (nodes.startsWith('N1')) {
+    return 'N1';
+  }
+
+  return 'N0';
+}
+
+function getPrognosticBucket(tumorGroup: TumorGroup, nodeGroup: NodeGroup): PrognosticBucket {
+  if (nodeGroup === 'N3' || tumorGroup === 'T4') {
+    return 'E';
+  }
+
+  if (
+    (nodeGroup === 'N2' && (tumorGroup === 'T0' || tumorGroup === 'T1' || tumorGroup === 'T2' || tumorGroup === 'T3')) ||
+    ((nodeGroup === 'N1' || nodeGroup === 'N1mi') && tumorGroup === 'T3')
+  ) {
+    return 'D';
+  }
+
+  if ((tumorGroup === 'T2' && (nodeGroup === 'N1' || nodeGroup === 'N1mi')) || (tumorGroup === 'T3' && nodeGroup === 'N0')) {
+    return 'C';
+  }
+
+  if (
+    ((tumorGroup === 'T0' || tumorGroup === 'T1') && nodeGroup === 'N1') ||
+    (tumorGroup === 'T2' && nodeGroup === 'N0')
+  ) {
+    return 'B';
+  }
+
+  return 'A';
+}
+
+function normalizeTumorForStage(tumor: TumorCategory, nodes: NodeCategory): TumorGroup {
+  const tumorGroup = normalizeTumorCategory(tumor);
+
+  if (tumorGroup === 'Tis' && normalizeNodeCategory(nodes) !== 'N0') {
+    return 'T0';
+  }
+
+  return tumorGroup;
+}
+
+function getBiomarkerKey(input: Pick<StagingInput, 'her2' | 'er' | 'pr'>): BiomarkerKey {
+  return `${input.her2}|${input.er}|${input.pr}`;
+}
+
+function makeMatrix(rows: Record<Grade, StageGroup[]>): PrognosticMatrix {
+  return {
+    G1: makeBiomarkerStageMap(rows.G1),
+    G2: makeBiomarkerStageMap(rows.G2),
+    G3: makeBiomarkerStageMap(rows.G3),
+  };
+}
+
+function makeBiomarkerStageMap(stages: StageGroup[]): Record<BiomarkerKey, StageGroup> {
+  return BIOMARKER_KEYS.reduce<Record<BiomarkerKey, StageGroup>>(
+    (map, key, index) => ({
+      ...map,
+      [key]: stages[index],
+    }),
+    {} as Record<BiomarkerKey, StageGroup>,
+  );
+}
+
+function buildNotes(input: StagingInput, anatomicStage: StageGroup, prognosticStage: StageGroup): string[] {
+  const notes = [
+    'Educational prototype only; validate against current AJCC/NCCN source tables before clinical use.',
+  ];
+
+  if (input.metastasis === 'M1') {
+    notes.push('Distant metastasis sets both stage groups to IV.');
+  }
+
+  if (input.tumor === 'Tis' && normalizeNodeCategory(input.nodes) === 'N0') {
+    notes.push('In situ disease with N0/M0 is grouped as stage 0.');
+  }
+
+  if (input.tumor === 'Tis' && normalizeNodeCategory(input.nodes) !== 'N0') {
+    notes.push('Tis with nodal involvement is staged using the nodal tumor information, grouped with T0 in this calculator.');
+  }
+
+  if (anatomicStage !== prognosticStage) {
+    notes.push('Prognostic stage was assigned from the AJCC prognostic table using TNM, grade, ER, PR, and HER2.');
+  }
+
+  if (input.basis === 'clinical') {
+    notes.push('Clinical staging uses pre-treatment examination, imaging, and biopsy information.');
+  } else {
+    notes.push('Pathologic staging uses surgical pathology information when available.');
+  }
+
+  return notes;
+}

@@ -6,9 +6,12 @@
     "expo": "~57.0.4",
     "expo-status-bar": "~57.0.0",
     "react": "19.2.3",
-    "react-native": "0.86.0"
+    "react-dom": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },
@@ -16,7 +19,9 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test .test-build/src/**/*.test.js"
   },
   "private": true
 }
