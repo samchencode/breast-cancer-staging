@@ -31,6 +31,7 @@ export type NodeCategory = ClinicalNodeCategory | PathologicNodeCategory;
 export type MetastasisCategory = 'M0' | 'M0(i+)' | 'M1';
 export type Grade = 'G1' | 'G2' | 'G3';
 export type BiomarkerStatus = 'positive' | 'negative';
+export type OncotypeScore = number | null;
 
 export type StageGroup =
   | '0'
@@ -53,6 +54,7 @@ export type StagingInput = {
   er: BiomarkerStatus;
   pr: BiomarkerStatus;
   her2: BiomarkerStatus;
+  oncotypeScore?: OncotypeScore;
 };
 
 export type StagingResult = {
@@ -67,6 +69,7 @@ export type StagingResult = {
 type BiomarkerKey = `${BiomarkerStatus}|${BiomarkerStatus}|${BiomarkerStatus}`;
 type PrognosticBucket = 'A' | 'B' | 'C' | 'D' | 'E';
 type PrognosticMatrix = Record<Grade, Record<BiomarkerKey, StageGroup>>;
+const LOW_RISK_ONCOTYPE_MAX_EXCLUSIVE = 11;
 
 // Prognostic buckets are internal row groups for the AJCC prognostic tables, not
 // user-facing stage names. M1 and Tis/N0 are handled before these buckets.
@@ -240,8 +243,13 @@ export function calculatePrognosticStage(input: StagingInput): StageGroup {
 
   const bucket = getPrognosticBucket(tumorGroup, nodeGroup);
   const matrix = input.basis === 'clinical' ? CLINICAL_PROGNOSTIC_STAGE : PATHOLOGIC_PROGNOSTIC_STAGE;
+  const tableStage = matrix[bucket][input.grade][getBiomarkerKey(input)];
 
-  return matrix[bucket][input.grade][getBiomarkerKey(input)];
+  if (qualifiesForLowRiskOncotypeModifier(input)) {
+    return 'IA';
+  }
+
+  return tableStage;
 }
 
 export function getBiomarkerSubtype(input: Pick<StagingInput, 'er' | 'pr' | 'her2'>): string {
@@ -296,6 +304,28 @@ export function normalizeNodeCategory(nodes: NodeCategory): NodeGroup {
 
 export function normalizeMetastasisCategory(metastasis: MetastasisCategory): 'M0' | 'M1' {
   return metastasis === 'M1' ? 'M1' : 'M0';
+}
+
+export function isValidOncotypeScore(score: OncotypeScore | undefined): score is number {
+  return typeof score === 'number' && Number.isInteger(score) && score >= 0 && score <= 100;
+}
+
+export function qualifiesForLowRiskOncotypeModifier(input: StagingInput): boolean {
+  if (!isValidOncotypeScore(input.oncotypeScore) || input.oncotypeScore >= LOW_RISK_ONCOTYPE_MAX_EXCLUSIVE) {
+    return false;
+  }
+
+  const tumorGroup = normalizeTumorCategory(input.tumor);
+  const hormoneReceptorPositive = input.er === 'positive' || input.pr === 'positive';
+
+  return (
+    input.basis === 'pathologic' &&
+    (tumorGroup === 'T1' || tumorGroup === 'T2') &&
+    normalizeNodeCategory(input.nodes) === 'N0' &&
+    normalizeMetastasisCategory(input.metastasis) === 'M0' &&
+    hormoneReceptorPositive &&
+    input.her2 === 'negative'
+  );
 }
 
 function getPrognosticBucket(tumorGroup: TumorGroup, nodeGroup: NodeGroup): PrognosticBucket {
@@ -369,6 +399,10 @@ function buildNotes(input: StagingInput, anatomicStage: StageGroup, prognosticSt
     notes.push('M0(i+) is recorded separately but is staged using the T and N categories, not as stage IV.');
   }
 
+  if (input.oncotypeScore != null && !isValidOncotypeScore(input.oncotypeScore)) {
+    notes.push('Oncotype DX recurrence score must be an integer from 0 to 100; the score was not used.');
+  }
+
   if (input.tumor === 'Tis' && normalizeNodeCategory(input.nodes) === 'N0') {
     notes.push('In situ disease with N0/M0 is grouped as stage 0.');
   }
@@ -378,7 +412,13 @@ function buildNotes(input: StagingInput, anatomicStage: StageGroup, prognosticSt
   }
 
   if (anatomicStage !== prognosticStage) {
-    notes.push('Prognostic stage was assigned from the AJCC prognostic table using TNM, grade, ER, PR, and HER2.');
+    notes.push('Prognostic stage was assigned from TNM, grade, ER, PR, HER2, and eligible prognostic modifiers.');
+  }
+
+  if (qualifiesForLowRiskOncotypeModifier(input)) {
+    notes.push('Low-risk Oncotype DX recurrence score modified the pathologic prognostic stage to IA.');
+  } else if (isValidOncotypeScore(input.oncotypeScore)) {
+    notes.push('Oncotype DX recurrence score was entered but did not meet the criteria for a prognostic stage modifier.');
   }
 
   if (input.basis === 'clinical') {

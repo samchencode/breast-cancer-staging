@@ -1,5 +1,5 @@
 {
-  "source": "Golden expected stages generated from reviewed NCI PDQ/AJCC 8th edition table transcription in src/domain/staging.ts.",
+  "source": "Golden expected stages generated from reviewed NCI PDQ/AJCC 8th edition table transcription in src/domain/staging.ts. Rows cover baseline staging without the optional Oncotype DX modifier.",
   "columns": ["basis","tumor","nodes","metastasis","grade","er","pr","her2","anatomicStage","prognosticStage"],
   "rows": [
     ["clinical","Tis","N0","M0","G1","positive","positive","positive","0","0"],

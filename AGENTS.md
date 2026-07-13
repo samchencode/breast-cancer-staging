@@ -10,7 +10,7 @@ This project currently uses Expo SDK 57.
 
 ## Project
 
-This is an Expo React Native breast cancer staging calculator. It calculates anatomic and prognostic stage groups from staging basis, TNM category, grade, ER status, PR status, and HER2 status.
+This is an Expo React Native breast cancer staging calculator. It calculates anatomic and prognostic stage groups from staging basis, TNM category, grade, ER status, PR status, HER2 status, and an optional Oncotype DX recurrence score modifier.
 
 The app is educational/prototype software, not validated clinical decision support.
 
@@ -39,12 +39,13 @@ The app is educational/prototype software, not validated clinical decision suppo
 - `src/domain/definitions.ts` owns user-facing TNM definitions and option lists.
 - `src/domain/staging.golden.json` stores one expected output row per supported input combination.
 - `src/domain/staging.test.ts` should stay thin. It should read the golden file and compare outputs, not reimplement the staging algorithm.
+- Keep optional modifiers, such as Oncotype DX, implemented in domain helpers with focused tests around eligibility and boundary behavior.
 
 ## Clinical Safety
 
 - Do not present unvalidated calculations as clinically authoritative.
 - Use NCI PDQ/AJCC source material for staging behavior. Treatment guidelines are not enough to change stage-group behavior.
-- If adding Oncotype DX / 21-gene recurrence score support, verify the exact AJCC staging criteria first. It should not change anatomic stage.
+- If changing Oncotype DX / 21-gene recurrence score support, verify the exact AJCC staging criteria first. It should not change anatomic stage.
 - Update `README.md` whenever staging scope, assumptions, source material, or validation status changes.
 - Run `npm test` after editing anything in `src/domain`.
 - Run `npm run typecheck` after TypeScript or UI changes.

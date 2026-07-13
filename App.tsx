@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { getNodeDefinition, nodeOptionsByBasis, tnmDefinitions } from './src/domain/definitions';
 import {
@@ -9,6 +9,7 @@ import {
   Grade,
   MetastasisCategory,
   NodeCategory,
+  OncotypeScore,
   StagingBasis,
   StagingInput,
   TumorCategory,
@@ -29,6 +30,7 @@ const initialInput: StagingInput = {
   er: 'positive',
   pr: 'positive',
   her2: 'negative',
+  oncotypeScore: null,
 };
 
 export default function App() {
@@ -47,6 +49,21 @@ export default function App() {
       basis: value,
       nodes: 'N0',
     }));
+  }
+
+  function updateOncotypeScore(value: string) {
+    const digitsOnly = value.replace(/\D/g, '');
+
+    if (digitsOnly.length === 0) {
+      update('oncotypeScore', null);
+      return;
+    }
+
+    const score = Number(digitsOnly);
+
+    if (score >= 0 && score <= 100) {
+      update('oncotypeScore', score as OncotypeScore);
+    }
   }
 
   return (
@@ -107,6 +124,8 @@ export default function App() {
             <BiomarkerToggle label="PR" value={input.pr} onSelect={(value) => update('pr', value)} />
             <BiomarkerToggle label="HER2" value={input.her2} onSelect={(value) => update('her2', value)} />
           </View>
+
+          <OncotypeScoreInput value={input.oncotypeScore ?? null} onChange={updateOncotypeScore} onClear={() => update('oncotypeScore', null)} />
         </View>
 
         <View style={styles.notesPanel}>
@@ -156,6 +175,38 @@ export default function App() {
         }}
       />
     </SafeAreaView>
+  );
+}
+
+type OncotypeScoreInputProps = {
+  value: OncotypeScore;
+  onChange: (value: string) => void;
+  onClear: () => void;
+};
+
+function OncotypeScoreInput({ value, onChange, onClear }: OncotypeScoreInputProps) {
+  return (
+    <View style={styles.oncotypeGroup}>
+      <Text style={styles.fieldLabel}>Oncotype DX recurrence score</Text>
+      <View style={styles.oncotypeInputRow}>
+        <TextInput
+          accessibilityLabel="Oncotype DX recurrence score"
+          keyboardType="number-pad"
+          maxLength={3}
+          onChangeText={onChange}
+          placeholder="Not tested"
+          placeholderTextColor="#8a7c73"
+          style={styles.oncotypeInput}
+          value={value == null ? '' : String(value)}
+        />
+        <Pressable accessibilityRole="button" onPress={onClear} style={styles.clearButton}>
+          <Text style={styles.clearButtonText}>Clear</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.optionDescription}>
+        Optional 0-100 modifier. Low-risk scores affect only eligible pathologic HR+/HER2- T1-T2 N0 M0 prognostic staging.
+      </Text>
+    </View>
   );
 }
 
@@ -464,6 +515,39 @@ const styles = StyleSheet.create({
   biomarkerToggle: {
     flex: 1,
     gap: 8,
+  },
+  oncotypeGroup: {
+    gap: 8,
+  },
+  oncotypeInputRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  oncotypeInput: {
+    backgroundColor: '#ffffff',
+    borderColor: '#d8ccc2',
+    borderRadius: 8,
+    borderWidth: 1,
+    color: '#241c18',
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '700',
+    minHeight: 48,
+    paddingHorizontal: 12,
+  },
+  clearButton: {
+    alignItems: 'center',
+    backgroundColor: '#e8dfd7',
+    borderRadius: 8,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 14,
+  },
+  clearButtonText: {
+    color: '#4e433d',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   notesPanel: {
     backgroundColor: '#fff8df',
