@@ -49,6 +49,7 @@ export const tnmDefinitions: {
   },
   metastasis: {
     M0: 'No clinical or radiographic evidence of distant metastasis.',
+    'M0(i+)': 'Molecularly or microscopically detected tumor cells no larger than 0.2 mm in blood, bone marrow, or non-regional nodal tissue, without clinical or radiographic distant metastasis.',
     M1: 'Distant metastasis is present.',
   },
 };

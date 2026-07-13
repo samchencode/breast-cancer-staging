@@ -28,7 +28,7 @@ export type PathologicNodeCategory =
   | 'N3b'
   | 'N3c';
 export type NodeCategory = ClinicalNodeCategory | PathologicNodeCategory;
-export type MetastasisCategory = 'M0' | 'M1';
+export type MetastasisCategory = 'M0' | 'M0(i+)' | 'M1';
 export type Grade = 'G1' | 'G2' | 'G3';
 export type BiomarkerStatus = 'positive' | 'negative';
 
@@ -41,7 +41,8 @@ export type StageGroup =
   | 'IIIA'
   | 'IIIB'
   | 'IIIC'
-  | 'IV';
+  | 'IV'
+  | 'Not applicable';
 
 export type StagingInput = {
   basis: StagingBasis;
@@ -151,15 +152,19 @@ export function calculateBreastCancerStage(input: StagingInput): StagingResult {
 }
 
 export function calculateAnatomicStage(input: Pick<StagingInput, 'tumor' | 'nodes' | 'metastasis'>): StageGroup {
-  if (input.metastasis === 'M1') {
+  if (normalizeMetastasisCategory(input.metastasis) === 'M1') {
     return 'IV';
   }
 
-  const tumorGroup = normalizeTumorForStage(input.tumor, input.nodes);
+  const tumorGroup = normalizeTumorCategory(input.tumor);
   const nodeGroup = normalizeNodeCategory(input.nodes);
 
   if (tumorGroup === 'Tis' && nodeGroup === 'N0') {
     return '0';
+  }
+
+  if (tumorGroup === 'Tis') {
+    return 'Not applicable';
   }
 
   if (nodeGroup === 'N3') {
@@ -198,10 +203,6 @@ export function calculateAnatomicStage(input: Pick<StagingInput, 'tumor' | 'node
     return 'IIIA';
   }
 
-  if (tumorGroup === 'Tis') {
-    return '0';
-  }
-
   if (tumorGroup === 'T0' || tumorGroup === 'T1') {
     return 'IA';
   }
@@ -214,11 +215,11 @@ export function calculateAnatomicStage(input: Pick<StagingInput, 'tumor' | 'node
 }
 
 export function calculatePrognosticStage(input: StagingInput): StageGroup {
-  if (input.metastasis === 'M1') {
+  if (normalizeMetastasisCategory(input.metastasis) === 'M1') {
     return 'IV';
   }
 
-  const tumorGroup = normalizeTumorForStage(input.tumor, input.nodes);
+  const tumorGroup = normalizeTumorForPrognosticStage(input.tumor, input.nodes);
   const nodeGroup = normalizeNodeCategory(input.nodes);
 
   if (tumorGroup === 'Tis' && nodeGroup === 'N0') {
@@ -281,6 +282,10 @@ export function normalizeNodeCategory(nodes: NodeCategory): NodeGroup {
   return 'N0';
 }
 
+export function normalizeMetastasisCategory(metastasis: MetastasisCategory): 'M0' | 'M1' {
+  return metastasis === 'M1' ? 'M1' : 'M0';
+}
+
 function getPrognosticBucket(tumorGroup: TumorGroup, nodeGroup: NodeGroup): PrognosticBucket {
   if (nodeGroup === 'N3' || tumorGroup === 'T4') {
     return 'E';
@@ -307,7 +312,7 @@ function getPrognosticBucket(tumorGroup: TumorGroup, nodeGroup: NodeGroup): Prog
   return 'A';
 }
 
-function normalizeTumorForStage(tumor: TumorCategory, nodes: NodeCategory): TumorGroup {
+function normalizeTumorForPrognosticStage(tumor: TumorCategory, nodes: NodeCategory): TumorGroup {
   const tumorGroup = normalizeTumorCategory(tumor);
 
   if (tumorGroup === 'Tis' && normalizeNodeCategory(nodes) !== 'N0') {
@@ -344,8 +349,12 @@ function buildNotes(input: StagingInput, anatomicStage: StageGroup, prognosticSt
     'Educational prototype only; validate against current AJCC/NCCN source tables before clinical use.',
   ];
 
-  if (input.metastasis === 'M1') {
+  if (normalizeMetastasisCategory(input.metastasis) === 'M1') {
     notes.push('Distant metastasis sets both stage groups to IV.');
+  }
+
+  if (input.metastasis === 'M0(i+)') {
+    notes.push('M0(i+) is recorded separately but is staged using the T and N categories, not as stage IV.');
   }
 
   if (input.tumor === 'Tis' && normalizeNodeCategory(input.nodes) === 'N0') {
@@ -353,7 +362,7 @@ function buildNotes(input: StagingInput, anatomicStage: StageGroup, prognosticSt
   }
 
   if (input.tumor === 'Tis' && normalizeNodeCategory(input.nodes) !== 'N0') {
-    notes.push('Tis with nodal involvement is staged using the nodal tumor information, grouped with T0 in this calculator.');
+    notes.push('Tis with nodal involvement has no anatomic stage group in this calculator; prognostic staging uses the nodal tumor information grouped with T0.');
   }
 
   if (anatomicStage !== prognosticStage) {

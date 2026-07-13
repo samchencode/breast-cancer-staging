@@ -15,7 +15,7 @@ import {
 } from './src/domain/staging';
 
 const tumorOptions: TumorCategory[] = ['Tis', 'T0', 'T1a', 'T1b', 'T1c', 'T2', 'T3', 'T4a', 'T4b', 'T4c', 'T4d'];
-const metastasisOptions: MetastasisCategory[] = ['M0', 'M1'];
+const metastasisOptions: MetastasisCategory[] = ['M0', 'M0(i+)', 'M1'];
 const gradeOptions: Grade[] = ['G1', 'G2', 'G3'];
 const biomarkerOptions: BiomarkerStatus[] = ['positive', 'negative'];
 

@@ -20,6 +20,7 @@ This is an Expo React Native app for breast cancer staging calculations.
 - Do not put staging rules directly in `App.tsx` or other view components.
 - Treat medical staging logic as regulated/high-risk domain behavior. Prefer table-driven, test-covered logic over informal conditionals as the app matures.
 - Run `npm test` after editing anything in `src/domain`.
+- Keep domain tests golden-fixture based. Do not reimplement the staging algorithm in the test suite.
 
 ## Clinical Safety
 

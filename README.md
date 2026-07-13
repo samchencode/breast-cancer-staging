@@ -34,6 +34,8 @@ npm run typecheck
 npm test
 ```
 
+`npm test` checks the calculator against `src/domain/staging.golden.json`. Use `npm run test:verbose` only when you need to inspect the one-subtest-per-input expansion.
+
 ## Clinical Scope
 
 The domain module is intentionally isolated so staging tables can be reviewed or extended without changing the UI. Before clinical use:
