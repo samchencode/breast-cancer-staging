@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { getNodeDefinition, nodeOptionsByBasis, tnmDefinitions } from './src/domain/definitions';
@@ -385,12 +385,26 @@ function InstallInstructionsModal({ visible, onClose }: InstallInstructionsModal
       <View style={styles.installPromptBackdrop}>
         <View style={styles.installPromptCard}>
           <Text style={styles.installPromptTitle}>Install Web App</Text>
+          <Text style={styles.installPromptText}>Open this page in Safari first if you are using another browser.</Text>
           <View style={styles.installStepList}>
-            <Text style={styles.installStepText}>1. Tap the Share button in Safari.</Text>
-            <Text style={styles.installStepText}>2. Tap Add to Home Screen.</Text>
-            <Text style={styles.installStepText}>3. Tap Add.</Text>
+            <InstallStep number="1">
+              <Text style={styles.installStepText}>Tap the Share button</Text>
+              <ShareIcon />
+              <Text style={styles.installStepText}>in Safari.</Text>
+            </InstallStep>
+            <InstallStep number="2">
+              <Text style={styles.installStepText}>If you only see the "..." menu, tap "..." first, then choose Share.</Text>
+            </InstallStep>
+            <InstallStep number="3">
+              <Text style={styles.installStepText}>Scroll all the way down in the share menu.</Text>
+            </InstallStep>
+            <InstallStep number="4">
+              <Text style={styles.installStepText}>Tap Add to Home Screen.</Text>
+            </InstallStep>
+            <InstallStep number="5">
+              <Text style={styles.installStepText}>Tap Add in the top right.</Text>
+            </InstallStep>
           </View>
-          <Text style={styles.installPromptText}>If Add to Home Screen is not shown, open this page in Safari and try again.</Text>
           <View style={styles.installPromptActions}>
             <Pressable accessibilityRole="button" onPress={onClose} style={styles.installPromptPrimaryButton}>
               <Text style={styles.installPromptPrimaryText}>Done</Text>
@@ -399,6 +413,33 @@ function InstallInstructionsModal({ visible, onClose }: InstallInstructionsModal
         </View>
       </View>
     </Modal>
+  );
+}
+
+type InstallStepProps = {
+  number: string;
+  children: ReactNode;
+};
+
+function InstallStep({ number, children }: InstallStepProps) {
+  return (
+    <View style={styles.installStepRow}>
+      <View style={styles.installStepNumber}>
+        <Text style={styles.installStepNumberText}>{number}</Text>
+      </View>
+      <View style={styles.installStepContent}>{children}</View>
+    </View>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.shareIcon}>
+      <View style={styles.shareIconBox} />
+      <View style={styles.shareIconShaft} />
+      <View style={[styles.shareIconHead, styles.shareIconHeadLeft]} />
+      <View style={[styles.shareIconHead, styles.shareIconHeadRight]} />
+    </View>
   );
 }
 
@@ -848,13 +889,78 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   installStepList: {
-    gap: 8,
+    gap: 10,
+  },
+  installStepRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  installStepNumber: {
+    alignItems: 'center',
+    backgroundColor: '#e8dfd7',
+    borderRadius: 6,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  installStepNumberText: {
+    color: '#4e433d',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  installStepContent: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    minWidth: 0,
+    paddingTop: 1,
   },
   installStepText: {
     color: '#241c18',
     fontSize: 15,
     fontWeight: '700',
     lineHeight: 21,
+  },
+  shareIcon: {
+    height: 26,
+    position: 'relative',
+    width: 24,
+  },
+  shareIconBox: {
+    borderColor: '#176cc4',
+    borderRadius: 3,
+    borderWidth: 2,
+    bottom: 1,
+    height: 16,
+    left: 3,
+    position: 'absolute',
+    width: 18,
+  },
+  shareIconShaft: {
+    backgroundColor: '#176cc4',
+    height: 17,
+    left: 11,
+    position: 'absolute',
+    top: 0,
+    width: 2,
+  },
+  shareIconHead: {
+    backgroundColor: '#176cc4',
+    height: 10,
+    position: 'absolute',
+    top: 0,
+    width: 2,
+  },
+  shareIconHeadLeft: {
+    left: 8,
+    transform: [{ rotate: '45deg' }],
+  },
+  shareIconHeadRight: {
+    left: 14,
+    transform: [{ rotate: '-45deg' }],
   },
   installPromptActions: {
     flexDirection: 'row',
