@@ -3,5 +3,9 @@
   "compilerOptions": {
     "strict": true
   },
-  "exclude": ["src/**/*.test.ts", ".test-build"]
+  "exclude": [
+    "src/**/*.test.ts",
+    ".test-build",
+    "src/**/*.rn-test.tsx"
+  ]
 }
