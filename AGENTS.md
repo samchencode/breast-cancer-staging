@@ -20,6 +20,8 @@ The app is educational/prototype software, not validated clinical decision suppo
 - `npm run ios`: start Expo for iOS.
 - `npm run android`: start Expo for Android.
 - `npm run web`: start Expo for web.
+- `npm run build:web`: export the Expo web app to `dist`.
+- `npm run build:github-pages`: export the web app and rewrite static asset URLs for repository-path GitHub Pages hosting.
 - `npm run typecheck`: run TypeScript validation.
 - `npm test`: compile and run the domain unit tests.
 - `npm run test:verbose`: run the expanded golden-fixture subtests when detailed output is needed.
@@ -40,6 +42,7 @@ The app is educational/prototype software, not validated clinical decision suppo
 - `src/domain/staging.golden.json` stores one expected output row per supported input combination.
 - `src/domain/staging.test.ts` should stay thin. It should read the golden file and compare outputs, not reimplement the staging algorithm.
 - Keep optional modifiers, such as Oncotype DX, implemented in domain helpers with focused tests around eligibility and boundary behavior.
+- GitHub Pages deployment is defined in `.github/workflows/deploy-pages.yml` and publishes the `dist` artifact built by `npm run build:github-pages`.
 
 ## Clinical Safety
 

@@ -56,6 +56,12 @@ npm run android
 npm run web
 ```
 
+Build the static web version for GitHub Pages:
+
+```bash
+npm run build:github-pages
+```
+
 ## Validation
 
 Run TypeScript validation:
@@ -79,6 +85,25 @@ npm test
 - `src/domain/definitions.ts`: editable user-facing TNM descriptions and clinical/pathologic node option lists.
 - `src/domain/staging.test.ts`: golden-fixture test runner.
 - `src/domain/staging.golden.json`: expected stage outputs for supported inputs.
+- `scripts/prepare-github-pages.mjs`: rewrites Expo web export asset URLs for repository-path GitHub Pages hosting and writes `.nojekyll`.
+- `.github/workflows/deploy-pages.yml`: builds, tests, exports, and deploys the web app to GitHub Pages.
+
+## GitHub Pages
+
+The web app is deployed from GitHub Actions on pushes to `main`. The expected repository Pages URL is:
+
+https://samchencode.github.io/breast-cancer-staging/
+
+GitHub repository settings must use **Pages > Build and deployment > Source: GitHub Actions**. The workflow runs:
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npm run build:github-pages
+```
+
+`npm run build:github-pages` runs Expo's static web export and then rewrites root-relative asset URLs so the app works from the `/breast-cancer-staging/` repository path.
 
 ## Clinical Sources
 
@@ -88,5 +113,7 @@ Primary behavior should be checked against:
 - AJCC Cancer Staging Manual, 8th edition, Breast chapter: https://www.facs.org/quality-programs/cancer-programs/american-joint-committee-on-cancer/
 - NCI PDQ Oncotype DX discussion for recurrence-score context: https://www.cancer.gov/types/breast/hp/breast-treatment-pdq
 - NCI PDQ TAILORx discussion for the low-risk recurrence-score cutoff used here: https://www.cancer.gov/types/breast/hp/breast-treatment-pdq
+- Expo web export docs: https://docs.expo.dev/workflow/web/
+- GitHub Pages custom workflow docs: https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
 
 NCI PDQ republishes AJCC staging tables with permission and notes that U.S. reporting uses the Clinical and Pathological Prognostic Stage Group tables for invasive breast cancer.
