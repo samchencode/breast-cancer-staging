@@ -20,7 +20,7 @@
     },
     "web": {
       "name": "Breast Cancer AJCC Staging",
-      "shortName": "AJCC Staging",
+      "shortName": "Breast Staging",
       "description": "Educational breast cancer anatomic and prognostic staging calculator.",
       "lang": "en",
       "scope": ".",
