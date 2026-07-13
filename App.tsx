@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getNodeDefinition, nodeOptionsByBasis, tnmDefinitions } from './src/domain/definitions';
 import {
@@ -18,6 +18,7 @@ const tumorOptions: TumorCategory[] = ['Tis', 'T0', 'T1a', 'T1b', 'T1c', 'T2', '
 const metastasisOptions: MetastasisCategory[] = ['M0', 'M0(i+)', 'M1'];
 const gradeOptions: Grade[] = ['G1', 'G2', 'G3'];
 const biomarkerOptions: BiomarkerStatus[] = ['positive', 'negative'];
+type PickerKey = 'tumor' | 'nodes' | 'metastasis';
 
 const initialInput: StagingInput = {
   basis: 'clinical',
@@ -32,6 +33,7 @@ const initialInput: StagingInput = {
 
 export default function App() {
   const [input, setInput] = useState<StagingInput>(initialInput);
+  const [openPicker, setOpenPicker] = useState<PickerKey | null>(null);
   const result = useMemo(() => calculateBreastCancerStage(input), [input]);
   const nodeOptions = nodeOptionsByBasis[input.basis];
 
@@ -74,28 +76,25 @@ export default function App() {
             formatLabel={(value) => (value === 'clinical' ? 'Clinical' : 'Pathologic')}
           />
 
-          <OptionGroup
+          <SelectorField
             label="Tumor"
-            options={tumorOptions}
-            selected={input.tumor}
-            onSelect={(value) => update('tumor', value as TumorCategory)}
+            value={input.tumor}
             description={tnmDefinitions.tumor[input.tumor]}
+            onPress={() => setOpenPicker('tumor')}
           />
 
           <View style={styles.fieldRow}>
-            <OptionGroup
+            <SelectorField
               label="Nodes"
-              options={nodeOptions}
-              selected={input.nodes}
-              onSelect={(value) => update('nodes', value as NodeCategory)}
+              value={input.nodes}
               description={getNodeDefinition(input.basis, input.nodes)}
+              onPress={() => setOpenPicker('nodes')}
             />
-            <OptionGroup
+            <SelectorField
               label="Metastasis"
-              options={metastasisOptions}
-              selected={input.metastasis}
-              onSelect={(value) => update('metastasis', value as MetastasisCategory)}
+              value={input.metastasis}
               description={tnmDefinitions.metastasis[input.metastasis]}
+              onPress={() => setOpenPicker('metastasis')}
             />
           </View>
 
@@ -117,7 +116,114 @@ export default function App() {
           ))}
         </View>
       </ScrollView>
+
+      <SelectorModal
+        title="Tumor"
+        visible={openPicker === 'tumor'}
+        options={tumorOptions}
+        selected={input.tumor}
+        getDescription={(value) => tnmDefinitions.tumor[value]}
+        onClose={() => setOpenPicker(null)}
+        onSelect={(value) => {
+          update('tumor', value);
+          setOpenPicker(null);
+        }}
+      />
+      <SelectorModal
+        title="Nodes"
+        visible={openPicker === 'nodes'}
+        options={nodeOptions}
+        selected={input.nodes}
+        getDescription={(value) => getNodeDefinition(input.basis, value)}
+        onClose={() => setOpenPicker(null)}
+        onSelect={(value) => {
+          update('nodes', value as NodeCategory);
+          setOpenPicker(null);
+        }}
+      />
+      <SelectorModal
+        title="Metastasis"
+        visible={openPicker === 'metastasis'}
+        options={metastasisOptions}
+        selected={input.metastasis}
+        getDescription={(value) => tnmDefinitions.metastasis[value]}
+        onClose={() => setOpenPicker(null)}
+        onSelect={(value) => {
+          update('metastasis', value);
+          setOpenPicker(null);
+        }}
+      />
     </SafeAreaView>
+  );
+}
+
+type SelectorFieldProps = {
+  label: string;
+  value: string;
+  description: string;
+  onPress: () => void;
+};
+
+function SelectorField({ label, value, description, onPress }: SelectorFieldProps) {
+  return (
+    <View style={styles.selectorGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Pressable accessibilityRole="button" onPress={onPress} style={styles.selectorField}>
+        <View style={styles.selectorValueRow}>
+          <Text style={styles.selectorValue}>{value}</Text>
+          <Text style={styles.selectorAction}>Change</Text>
+        </View>
+        <Text style={styles.selectorDescription}>{description}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+type SelectorModalProps<T extends string> = {
+  title: string;
+  visible: boolean;
+  options: readonly T[];
+  selected: T;
+  getDescription: (value: T) => string;
+  onClose: () => void;
+  onSelect: (value: T) => void;
+};
+
+function SelectorModal<T extends string>({ title, visible, options, selected, getDescription, onClose, onSelect }: SelectorModalProps<T>) {
+  return (
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <Pressable accessibilityRole="button" onPress={onClose} style={styles.modalCloseButton}>
+              <Text style={styles.modalCloseText}>Close</Text>
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.modalOptions}>
+            {options.map((option) => {
+              const active = selected === option;
+
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  key={option}
+                  onPress={() => onSelect(option)}
+                  style={[styles.modalOption, active && styles.modalOptionActive]}
+                >
+                  <View style={styles.modalOptionHeader}>
+                    <Text style={[styles.modalOptionValue, active && styles.modalOptionValueActive]}>{option}</Text>
+                    {active ? <Text style={styles.modalSelectedText}>Selected</Text> : null}
+                  </View>
+                  <Text style={[styles.modalOptionDescription, active && styles.modalOptionDescriptionActive]}>{getDescription(option)}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -311,6 +417,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
+  selectorGroup: {
+    flex: 1,
+    gap: 8,
+  },
+  selectorField: {
+    backgroundColor: '#ffffff',
+    borderColor: '#d8ccc2',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+    minHeight: 92,
+    padding: 12,
+  },
+  selectorValueRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  selectorValue: {
+    color: '#241c18',
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  selectorAction: {
+    color: '#784c61',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  selectorDescription: {
+    color: '#6f5d51',
+    fontSize: 12,
+    lineHeight: 17,
+  },
   biomarkers: {
     flexDirection: 'row',
     gap: 12,
@@ -336,5 +477,84 @@ const styles = StyleSheet.create({
     color: '#4b3b20',
     fontSize: 14,
     lineHeight: 20,
+  },
+  modalBackdrop: {
+    backgroundColor: 'rgba(36, 28, 24, 0.36)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#f6f3ef',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    maxHeight: '82%',
+    padding: 18,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    color: '#241c18',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  modalCloseButton: {
+    borderColor: '#cbbdb3',
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  modalCloseText: {
+    color: '#4e433d',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  modalOptions: {
+    gap: 8,
+    paddingBottom: 18,
+  },
+  modalOption: {
+    backgroundColor: '#ffffff',
+    borderColor: '#d8ccc2',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12,
+  },
+  modalOptionActive: {
+    backgroundColor: '#784c61',
+    borderColor: '#784c61',
+  },
+  modalOptionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'space-between',
+  },
+  modalOptionValue: {
+    color: '#241c18',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  modalOptionValueActive: {
+    color: '#ffffff',
+  },
+  modalSelectedText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  modalOptionDescription: {
+    color: '#6f5d51',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  modalOptionDescriptionActive: {
+    color: '#f7ede7',
   },
 });
