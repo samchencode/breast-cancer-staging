@@ -16,22 +16,19 @@ export const installInstructionSteps: InstallInstructionStep[] = [
       { type: 'text', text: 'Tap the Share button' },
       { type: 'shareIcon', accessibilityLabel: 'Share icon' },
       { type: 'text', text: 'in Safari.' },
+      { type: 'text', text: 'If you only see the "..." menu, tap "..." first, then choose Share.' },
     ],
   },
   {
     number: '2',
-    segments: [{ type: 'text', text: 'If you only see the "..." menu, tap "..." first, then choose Share.' }],
-  },
-  {
-    number: '3',
     segments: [{ type: 'text', text: 'Scroll all the way down in the share menu.' }],
   },
   {
-    number: '4',
+    number: '3',
     segments: [{ type: 'text', text: 'Tap Add to Home Screen.' }],
   },
   {
-    number: '5',
+    number: '4',
     segments: [{ type: 'text', text: 'Tap Add in the top right.' }],
   },
 ];

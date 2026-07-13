@@ -10,7 +10,7 @@ test('iOS install instructions start with Safari guidance', () => {
 test('iOS install instructions include the expected ordered steps', () => {
   assert.deepEqual(
     installInstructionSteps.map((step) => step.number),
-    ['1', '2', '3', '4', '5'],
+    ['1', '2', '3', '4'],
   );
 
   const text = installInstructionSteps
@@ -26,8 +26,13 @@ test('iOS install instructions include the expected ordered steps', () => {
   assert.match(text, /Tap Add in the top right./);
 });
 
-test('iOS install instructions include a share icon segment in the share step', () => {
+test('iOS install instructions include share fallback guidance in the share step', () => {
   const shareStep = installInstructionSteps[0];
+  const shareStepText = shareStep.segments
+    .filter((segment) => segment.type === 'text')
+    .map((segment) => segment.text)
+    .join(' ');
 
   assert.ok(shareStep.segments.some((segment) => segment.type === 'shareIcon'));
+  assert.match(shareStepText, /If you only see the "\.\.\." menu, tap "\.\.\." first, then choose Share./);
 });
