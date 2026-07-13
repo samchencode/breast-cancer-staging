@@ -20,6 +20,15 @@
     },
     "web": {
       "name": "Breast Cancer AJCC Staging",
+      "shortName": "AJCC Staging",
+      "description": "Educational breast cancer anatomic and prognostic staging calculator.",
+      "lang": "en",
+      "scope": ".",
+      "themeColor": "#784c61",
+      "display": "standalone",
+      "startUrl": ".",
+      "orientation": "portrait",
+      "backgroundColor": "#f6f3ef",
       "favicon": "./assets/favicon.png"
     }
   }

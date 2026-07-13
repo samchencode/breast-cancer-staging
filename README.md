@@ -7,6 +7,7 @@ This is educational/prototype software. Do not use it for clinical decision-maki
 ## What It Does
 
 - Runs on iOS, Android, and web through Expo SDK 57.
+- Exports the web app as an installable PWA with a manifest and conservative offline service worker.
 - Lets the user choose clinical or pathologic staging.
 - Uses modal selectors for tumor, nodes, and metastasis categories.
 - Shows editable TNM descriptions from `src/domain/definitions.ts`.
@@ -85,6 +86,10 @@ npm test
 - `src/domain/definitions.ts`: editable user-facing TNM descriptions and clinical/pathologic node option lists.
 - `src/domain/staging.test.ts`: golden-fixture test runner.
 - `src/domain/staging.golden.json`: expected stage outputs for supported inputs.
+- `public/index.html`: Expo web HTML template that links the PWA manifest and registers the service worker.
+- `public/manifest.json`: PWA manifest metadata and install icon declarations.
+- `public/sw.js`: development fallback service worker; production export rewrites `dist/sw.js`.
+- `scripts/prepare-pwa.mjs`: regenerates `dist/sw.js` after Expo export with the current hashed static assets in the precache list.
 - `scripts/prepare-github-pages.mjs`: rewrites Expo web export asset URLs for repository-path GitHub Pages hosting and writes `.nojekyll`.
 - `.github/workflows/deploy-pages.yml`: builds, tests, exports, and deploys the web app to GitHub Pages.
 
@@ -103,7 +108,7 @@ npm test
 npm run build:github-pages
 ```
 
-`npm run build:github-pages` runs Expo's static web export and then rewrites root-relative asset URLs so the app works from the `/breast-cancer-staging/` repository path.
+`npm run build:github-pages` runs Expo's static web export, generates the production service worker precache list, and then rewrites root-relative asset URLs so the app works from the `/breast-cancer-staging/` repository path. The PWA manifest uses relative `start_url` and `scope` values so the installed app launches correctly from the repository-path Pages URL.
 
 ## Clinical Sources
 
