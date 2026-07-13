@@ -49,17 +49,28 @@ export default function App() {
   const [openPicker, setOpenPicker] = useState<PickerKey | null>(null);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showInstallInstructions, setShowInstallInstructions] = useState(false);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const [isIosWebInstall, setIsIosWebInstall] = useState(false);
   const result = useMemo(() => calculateBreastCancerStage(input), [input]);
   const nodeOptions = nodeOptionsByBasis[input.basis];
   const isWeb = Platform.OS === 'web';
+  const canInstallOnWeb = installPromptEvent != null || isIosWebInstall;
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') {
       return;
     }
 
-    setIsPwaInstalled(isRunningAsInstalledPwa());
+    const installed = isRunningAsInstalledPwa();
+    const iosWebInstall = isIosWebBrowser();
+
+    setIsPwaInstalled(installed);
+    setIsIosWebInstall(iosWebInstall);
+
+    if (iosWebInstall && !installed && !hasDismissedPwaInstallPrompt()) {
+      setShowInstallPrompt(true);
+    }
 
     function handleBeforeInstallPrompt(event: Event) {
       event.preventDefault();
@@ -115,11 +126,21 @@ export default function App() {
   }
 
   async function promptPwaInstall() {
-    if (Platform.OS !== 'web' || !installPromptEvent) {
+    if (Platform.OS !== 'web') {
       return;
     }
 
     setShowInstallPrompt(false);
+
+    if (isIosWebInstall) {
+      setShowInstallInstructions(true);
+      return;
+    }
+
+    if (!installPromptEvent) {
+      return;
+    }
+
     await installPromptEvent.prompt();
 
     try {
@@ -153,11 +174,11 @@ export default function App() {
           {isWeb ? (
             <Pressable
               accessibilityRole="button"
-              disabled={!installPromptEvent || isPwaInstalled}
+              disabled={!canInstallOnWeb || isPwaInstalled}
               onPress={promptPwaInstall}
-              style={[styles.installButton, (!installPromptEvent || isPwaInstalled) && styles.installButtonDisabled]}
+              style={[styles.installButton, (!canInstallOnWeb || isPwaInstalled) && styles.installButtonDisabled]}
             >
-              <Text style={[styles.installButtonText, (!installPromptEvent || isPwaInstalled) && styles.installButtonTextDisabled]}>
+              <Text style={[styles.installButtonText, (!canInstallOnWeb || isPwaInstalled) && styles.installButtonTextDisabled]}>
                 {isPwaInstalled ? 'Installed' : 'INSTALL'}
               </Text>
             </Pressable>
@@ -265,10 +286,14 @@ export default function App() {
       />
       {isWeb ? (
         <InstallPromptModal
-          visible={showInstallPrompt && installPromptEvent != null && !isPwaInstalled}
+          visible={showInstallPrompt && canInstallOnWeb && !isPwaInstalled}
+          primaryActionLabel={isIosWebInstall ? 'Show Steps' : 'Install'}
           onDismiss={dismissPwaInstallPrompt}
           onInstall={promptPwaInstall}
         />
+      ) : null}
+      {isWeb ? (
+        <InstallInstructionsModal visible={showInstallInstructions} onClose={() => setShowInstallInstructions(false)} />
       ) : null}
     </SafeAreaView>
   );
@@ -309,13 +334,26 @@ function isRunningAsInstalledPwa() {
   return standaloneDisplayMode || iosStandalone;
 }
 
+function isIosWebBrowser() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return false;
+  }
+
+  const { maxTouchPoints, platform, userAgent } = window.navigator;
+  const iosDevice = /iPad|iPhone|iPod/.test(userAgent);
+  const ipadOsDesktopMode = platform === 'MacIntel' && maxTouchPoints > 1;
+
+  return iosDevice || ipadOsDesktopMode;
+}
+
 type InstallPromptModalProps = {
   visible: boolean;
+  primaryActionLabel: string;
   onDismiss: () => void;
   onInstall: () => void;
 };
 
-function InstallPromptModal({ visible, onDismiss, onInstall }: InstallPromptModalProps) {
+function InstallPromptModal({ visible, primaryActionLabel, onDismiss, onInstall }: InstallPromptModalProps) {
   return (
     <Modal animationType="fade" transparent visible={visible} onRequestClose={onDismiss}>
       <View style={styles.installPromptBackdrop}>
@@ -327,7 +365,35 @@ function InstallPromptModal({ visible, onDismiss, onInstall }: InstallPromptModa
               <Text style={styles.installPromptSecondaryText}>Not now</Text>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={onInstall} style={styles.installPromptPrimaryButton}>
-              <Text style={styles.installPromptPrimaryText}>Install</Text>
+              <Text style={styles.installPromptPrimaryText}>{primaryActionLabel}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+type InstallInstructionsModalProps = {
+  visible: boolean;
+  onClose: () => void;
+};
+
+function InstallInstructionsModal({ visible, onClose }: InstallInstructionsModalProps) {
+  return (
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
+      <View style={styles.installPromptBackdrop}>
+        <View style={styles.installPromptCard}>
+          <Text style={styles.installPromptTitle}>Install Web App</Text>
+          <View style={styles.installStepList}>
+            <Text style={styles.installStepText}>1. Tap the Share button in Safari.</Text>
+            <Text style={styles.installStepText}>2. Tap Add to Home Screen.</Text>
+            <Text style={styles.installStepText}>3. Tap Add.</Text>
+          </View>
+          <Text style={styles.installPromptText}>If Add to Home Screen is not shown, open this page in Safari and try again.</Text>
+          <View style={styles.installPromptActions}>
+            <Pressable accessibilityRole="button" onPress={onClose} style={styles.installPromptPrimaryButton}>
+              <Text style={styles.installPromptPrimaryText}>Done</Text>
             </Pressable>
           </View>
         </View>
@@ -780,6 +846,15 @@ const styles = StyleSheet.create({
     color: '#4e433d',
     fontSize: 14,
     lineHeight: 20,
+  },
+  installStepList: {
+    gap: 8,
+  },
+  installStepText: {
+    color: '#241c18',
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 21,
   },
   installPromptActions: {
     flexDirection: 'row',
